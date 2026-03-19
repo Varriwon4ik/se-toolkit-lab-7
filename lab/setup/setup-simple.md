@@ -266,7 +266,7 @@ The database starts empty. You need to run the ETL pipeline to populate it with 
 
 The autochecker tests your bot against your **deployed backend on your VM**. You need to deploy the same services there.
 
-1. [Connect to the VM](../../wiki/ssh.md#connect-to-the-vm).
+1. [Connect to the VM](../../wiki/vm-access.md#connect-to-the-vm-as-the-user-user-local).
 
 2. Make sure Lab 6 is stopped (if you haven't done this in step 1.3):
 
@@ -362,7 +362,7 @@ The autochecker needs to SSH into your VM as **your main user** to run checks (t
 
 ### 1.9. Set up LLM access (Qwen Code API)
 
-Your bot needs an LLM for the intent routing feature (Task 3). [Qwen Code](../../wiki/qwen.md#what-is-qwen-code) provides **1000 free requests per day** and works from Russia — no VPN or credit card needed.
+Your bot needs an LLM for the intent routing feature (Task 3). [Qwen Code](../../wiki/qwen-code.md#what-is-qwen-code) provides **1000 free requests per day** and works from Russia — no VPN or credit card needed.
 
 > [!NOTE]
 > If you set up the Qwen Code API in Lab 6, it should still be running on your VM. Verify by running this **on your VM**:
@@ -381,7 +381,7 @@ Your bot needs an LLM for the intent routing feature (Task 3). [Qwen Code](../..
 >
 > If this returns a JSON response with model info, you're good — skip to the next step.
 
-1. [Set up the Qwen Code API on your VM](../../wiki/qwen-code-api.md#set-up-the-qwen-code-api-remote).
+1. [Set up the Qwen Code API on your VM](../../wiki/qwen-code-api-deployment.md#deploy-the-qwen-code-api-remote).
 
    After completing the setup, you will have the Qwen API running on your VM at `http://localhost:42005/v1`.
 
