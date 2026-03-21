@@ -3,7 +3,7 @@
 
 def handle_start() -> str:
     """Handle the /start command.
-    
+
     Returns:
         Welcome message text.
     """

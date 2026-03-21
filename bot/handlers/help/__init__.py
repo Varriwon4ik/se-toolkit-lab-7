@@ -3,7 +3,7 @@
 
 def handle_help() -> str:
     """Handle the /help command.
-    
+
     Returns:
         Help message with available commands.
     """
