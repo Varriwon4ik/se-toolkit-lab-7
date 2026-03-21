@@ -3,7 +3,7 @@
 
 def handle_labs() -> str:
     """Handle the /labs command.
-    
+
     Returns:
         List of available labs message.
     """
