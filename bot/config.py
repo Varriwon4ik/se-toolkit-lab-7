@@ -1,7 +1,15 @@
 """Configuration loading for the LMS Telegram Bot."""
 
+from pathlib import Path
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Get the directory where this config.py file is located (bot/)
+# The .env.bot.secret file is in the project root (parent of bot/)
+BOT_DIR = Path(__file__).parent.resolve()
+PROJECT_ROOT = BOT_DIR.parent
+ENV_FILE = PROJECT_ROOT / ".env.bot.secret"
 
 
 class BotSettings(BaseSettings):
@@ -20,7 +28,7 @@ class BotSettings(BaseSettings):
     llm_api_model: str = Field(default="coder-model", alias="LLM_API_MODEL")
 
     model_config = SettingsConfigDict(
-        env_file=".env.bot.secret",
+        env_file=ENV_FILE,
         env_file_encoding="utf-8",
         case_sensitive=True,
         extra="allow",

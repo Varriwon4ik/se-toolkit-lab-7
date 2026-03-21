@@ -3,7 +3,11 @@
 from services.lms_client import PassRate
 
 
-def handle_scores(lab_id: str | None = None, pass_rates: list[PassRate] | None = None, error: str | None = None) -> str:
+def handle_scores(
+    lab_id: str | None = None,
+    pass_rates: list[PassRate] | None = None,
+    error: str | None = None,
+) -> str:
     """Handle the /scores command.
 
     Args:
