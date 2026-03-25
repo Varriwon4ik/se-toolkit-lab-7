@@ -45,6 +45,7 @@ class LMSClient:
                 base_url=self.base_url,
                 headers={"Authorization": f"Bearer {self.api_key}"},
                 timeout=30.0,
+                follow_redirects=True,
             )
         return self._client
 
@@ -96,7 +97,9 @@ class LMSClient:
             response.raise_for_status()
             data = response.json()
             if isinstance(data, list):
-                return data, None
+                # Filter only labs (not tasks)
+                labs = [item for item in data if item.get("type") == "lab"]
+                return labs, None
             return [], None
         except Exception as exc:
             return [], self._format_error(exc)

@@ -20,10 +20,6 @@ def handle_labs(labs: list[dict], error: str | None = None) -> str:
     lines = ["📋 Доступные лабораторные работы:"]
     for lab in labs:
         title = lab.get("title", lab.get("name", "Unknown"))
-        lab_type = lab.get("type", "")
-        if lab_type:
-            lines.append(f"- {title} ({lab_type})")
-        else:
-            lines.append(f"- {title}")
+        lines.append(f"- {title}")
 
     return "\n".join(lines)
