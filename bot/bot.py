@@ -7,6 +7,7 @@ from typing import NoReturn
 
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, CommandStart
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
 from config import settings
 from handlers import (
@@ -81,7 +82,9 @@ async def get_handler_response(
         pass_rates, error = await lms_client.get_pass_rates(arg)
         return handle_scores(lab_id=arg, pass_rates=pass_rates, error=error)
     else:
-        return "❌ Неизвестная команда. Используйте /help для просмотра доступных команд."
+        return (
+            "❌ Неизвестная команда. Используйте /help для просмотра доступных команд."
+        )
 
 
 async def run_test_mode(command: str) -> NoReturn:
@@ -95,19 +98,57 @@ async def run_test_mode(command: str) -> NoReturn:
     # Initialize LMS client for API calls
     lms_client = LMSClient(settings.lms_api_base_url, settings.lms_api_key)
 
+    # Initialize LLM client for natural language routing
+    llm_client = LLMClient(
+        settings.llm_api_base_url, settings.llm_api_key, settings.llm_api_model
+    )
+    llm_client.set_lms_client(lms_client)
+
     try:
-        response = await get_handler_response(cmd, arg, lms_client)
+        # Check if it's a natural language query (not a slash command)
+        if cmd.startswith("/"):
+            response = await get_handler_response(cmd, arg, lms_client)
+        else:
+            response = await llm_client.route_intent(command)
     finally:
         await lms_client.close()
+        await llm_client.close()
 
     print(response)
     sys.exit(0)
 
 
+def get_start_keyboard() -> InlineKeyboardMarkup:
+    """Create inline keyboard for /start command.
+
+    Returns:
+        InlineKeyboardMarkup with common action buttons.
+    """
+    keyboard = [
+        [
+            InlineKeyboardButton(text="📋 Доступные лабы", callback_data="action_labs"),
+            InlineKeyboardButton(text="💚 Health", callback_data="action_health"),
+        ],
+        [
+            InlineKeyboardButton(
+                text="📊 Оценки (lab-04)", callback_data="action_scores_lab-04"
+            ),
+            InlineKeyboardButton(
+                text="👥 Топ студентов", callback_data="action_top_lab-04"
+            ),
+        ],
+        [
+            InlineKeyboardButton(text="❓ Помощь", callback_data="action_help"),
+        ],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=keyboard)
+
+
 async def handle_start_command(message: types.Message) -> None:
     """Handle /start command from Telegram."""
     response = handle_start()
-    await message.answer(response)
+    keyboard = get_start_keyboard()
+    await message.answer(response, reply_markup=keyboard)
 
 
 async def handle_help_command(message: types.Message) -> None:
@@ -145,7 +186,7 @@ async def handle_scores_command(message: types.Message) -> None:
     if _lms_client is None:
         await message.answer("❌ Bot not initialized properly")
         return
-    
+
     args = message.text.split()[1:] if message.text else []
     lab_id = args[0] if args else None
 
@@ -164,15 +205,87 @@ async def handle_message(message: types.Message) -> None:
     Args:
         message: The Telegram message.
     """
-    # Placeholder - will be implemented in Task 3
-    response = "Я пока не понимаю естественный язык. Используйте команды: /help"
+    if _llm_client is None:
+        await message.answer("❌ Bot not initialized properly")
+        return
+
+    user_text = message.text or ""
+    response = await _llm_client.route_intent(user_text)
     await message.answer(response)
+
+
+async def handle_callback_query(callback_query: types.CallbackQuery) -> None:
+    """Handle inline keyboard button callbacks.
+
+    Args:
+        callback_query: The callback query from Telegram.
+    """
+    action = callback_query.data
+    response = ""
+
+    if action == "action_labs":
+        if _lms_client is None:
+            response = "❌ Bot not initialized properly"
+        else:
+            labs, error = await _lms_client.get_labs()
+            response = handle_labs(labs, error)
+
+    elif action == "action_health":
+        if _lms_client is None:
+            response = "❌ Bot not initialized properly"
+        else:
+            status = await _lms_client.health_check()
+            response = handle_health(status)
+
+    elif action == "action_scores_lab-04":
+        if _lms_client is None:
+            response = "❌ Bot not initialized properly"
+        else:
+            pass_rates, error = await _lms_client.get_pass_rates("lab-04")
+            response = handle_scores(
+                lab_id="lab-04", pass_rates=pass_rates, error=error
+            )
+
+    elif action == "action_top_lab-04":
+        if _lms_client is None:
+            response = "❌ Bot not initialized properly"
+        else:
+            client = await _lms_client._get_client()
+            try:
+                resp = await client.get(
+                    "/analytics/top-learners", params={"lab": "lab-04", "limit": 5}
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                if isinstance(data, list) and data:
+                    lines = ["👥 Топ студентов в Lab 04:"]
+                    for i, learner in enumerate(data[:5], 1):
+                        name = learner.get(
+                            "name", learner.get("learner_name", "Unknown")
+                        )
+                        score = learner.get("score", learner.get("average", 0))
+                        lines.append(f"{i}. {name}: {score:.1f}%")
+                    response = "\n".join(lines)
+                else:
+                    response = "📊 Нет данных о топ студентах для lab-04."
+            except Exception as exc:
+                response = f"❌ Error: {str(exc)}"
+
+    elif action == "action_help":
+        response = handle_help()
+
+    else:
+        response = "❓ Неизвестное действие"
+
+    if callback_query.message:
+        await callback_query.message.answer(response)
+    await callback_query.answer()
 
 
 async def run_telegram_mode() -> None:
     """Run the bot in Telegram mode."""
     global _lms_client, _llm_client
-    
+
     if not settings.bot_token:
         print("Ошибка: BOT_TOKEN не указан в .env.bot.secret", file=sys.stderr)
         sys.exit(1)
@@ -185,6 +298,7 @@ async def run_telegram_mode() -> None:
     _llm_client = LLMClient(
         settings.llm_api_base_url, settings.llm_api_key, settings.llm_api_model
     )
+    _llm_client.set_lms_client(_lms_client)
 
     # Register command handlers
     dispatcher.message.register(handle_start_command, CommandStart())
@@ -193,6 +307,9 @@ async def run_telegram_mode() -> None:
     dispatcher.message.register(handle_labs_command, Command("labs"))
     dispatcher.message.register(handle_scores_command, Command("scores"))
     dispatcher.message.register(handle_message)
+
+    # Register callback query handler for inline buttons
+    dispatcher.callback_query.register(handle_callback_query)
 
     try:
         await dispatcher.start_polling(bot)
