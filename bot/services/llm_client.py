@@ -261,7 +261,10 @@ class LLMClient:
                 response = await lms_client.get("/learners")
                 response.raise_for_status()
                 learners = response.json()
-                return {"learners": learners, "count": len(learners) if isinstance(learners, list) else 0}
+                return {
+                    "learners": learners,
+                    "count": len(learners) if isinstance(learners, list) else 0,
+                }
 
             elif name == "get_scores":
                 lab = arguments.get("lab", "")
@@ -276,7 +279,11 @@ class LLMClient:
                 if error:
                     return {"error": error}
                 return [
-                    {"task_name": pr.task_name, "pass_rate": pr.pass_rate, "attempts": pr.attempts}
+                    {
+                        "task_name": pr.task_name,
+                        "pass_rate": pr.pass_rate,
+                        "attempts": pr.attempts,
+                    }
                     for pr in pass_rates
                 ]
 
@@ -308,7 +315,9 @@ class LLMClient:
             elif name == "get_completion_rate":
                 lab = arguments.get("lab", "")
                 client = await self._lms_client._get_client()
-                response = await client.get("/analytics/completion-rate", params={"lab": lab})
+                response = await client.get(
+                    "/analytics/completion-rate", params={"lab": lab}
+                )
                 response.raise_for_status()
                 return response.json()
 
@@ -322,14 +331,16 @@ class LLMClient:
                 return {"error": f"Unknown tool: {name}"}
 
         except httpx.HTTPStatusError as exc:
-            return {"error": f"HTTP {exc.response.status_code}: {exc.response.reason_phrase}"}
+            return {
+                "error": f"HTTP {exc.response.status_code}: {exc.response.reason_phrase}"
+            }
         except Exception as exc:
             return {"error": str(exc)}
 
     async def chat_with_tools(
         self,
         user_message: str,
-        max_iterations: int = 5,
+        max_iterations: int = 15,
     ) -> str:
         """Chat with the LLM using tool calling.
 
@@ -378,7 +389,11 @@ class LLMClient:
             if not tool_calls:
                 # LLM returned final answer
                 content = assistant_message.get("content", "")
-                return content if content else "I don't have enough information to answer that."
+                return (
+                    content
+                    if content
+                    else "I don't have enough information to answer that."
+                )
 
             # Add assistant message with tool calls to history
             messages.append(assistant_message)
@@ -401,16 +416,24 @@ class LLMClient:
                 result = await self._execute_tool(tool_name, tool_args)
                 result_str = json.dumps(result, ensure_ascii=False, default=str)
 
-                self._debug(f"[tool] Result: {result_str[:200]}..." if len(result_str) > 200 else f"[tool] Result: {result_str}")
+                self._debug(
+                    f"[tool] Result: {result_str[:200]}..."
+                    if len(result_str) > 200
+                    else f"[tool] Result: {result_str}"
+                )
 
                 # Add tool result to conversation
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tool_id,
-                    "content": result_str,
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tool_id,
+                        "content": result_str,
+                    }
+                )
 
-            self._debug(f"[summary] Feeding {len(tool_calls)} tool result(s) back to LLM")
+            self._debug(
+                f"[summary] Feeding {len(tool_calls)} tool result(s) back to LLM"
+            )
 
         return "I couldn't complete the request after multiple attempts."
 

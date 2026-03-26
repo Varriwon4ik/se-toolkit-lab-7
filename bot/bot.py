@@ -82,7 +82,9 @@ async def get_handler_response(
         pass_rates, error = await lms_client.get_pass_rates(arg)
         return handle_scores(lab_id=arg, pass_rates=pass_rates, error=error)
     else:
-        return "❌ Неизвестная команда. Используйте /help для просмотра доступных команд."
+        return (
+            "❌ Неизвестная команда. Используйте /help для просмотра доступных команд."
+        )
 
 
 async def run_test_mode(command: str) -> NoReturn:
@@ -128,8 +130,12 @@ def get_start_keyboard() -> InlineKeyboardMarkup:
             InlineKeyboardButton(text="💚 Health", callback_data="action_health"),
         ],
         [
-            InlineKeyboardButton(text="📊 Оценки (lab-04)", callback_data="action_scores_lab-04"),
-            InlineKeyboardButton(text="👥 Топ студентов", callback_data="action_top_lab-04"),
+            InlineKeyboardButton(
+                text="📊 Оценки (lab-04)", callback_data="action_scores_lab-04"
+            ),
+            InlineKeyboardButton(
+                text="👥 Топ студентов", callback_data="action_top_lab-04"
+            ),
         ],
         [
             InlineKeyboardButton(text="❓ Помощь", callback_data="action_help"),
@@ -236,7 +242,9 @@ async def handle_callback_query(callback_query: types.CallbackQuery) -> None:
             response = "❌ Bot not initialized properly"
         else:
             pass_rates, error = await _lms_client.get_pass_rates("lab-04")
-            response = handle_scores(lab_id="lab-04", pass_rates=pass_rates, error=error)
+            response = handle_scores(
+                lab_id="lab-04", pass_rates=pass_rates, error=error
+            )
 
     elif action == "action_top_lab-04":
         if _lms_client is None:
@@ -244,13 +252,17 @@ async def handle_callback_query(callback_query: types.CallbackQuery) -> None:
         else:
             client = await _lms_client._get_client()
             try:
-                resp = await client.get("/analytics/top-learners", params={"lab": "lab-04", "limit": 5})
+                resp = await client.get(
+                    "/analytics/top-learners", params={"lab": "lab-04", "limit": 5}
+                )
                 resp.raise_for_status()
                 data = resp.json()
                 if isinstance(data, list) and data:
                     lines = ["👥 Топ студентов в Lab 04:"]
                     for i, learner in enumerate(data[:5], 1):
-                        name = learner.get("name", learner.get("learner_name", "Unknown"))
+                        name = learner.get(
+                            "name", learner.get("learner_name", "Unknown")
+                        )
                         score = learner.get("score", learner.get("average", 0))
                         lines.append(f"{i}. {name}: {score:.1f}%")
                     response = "\n".join(lines)
@@ -265,7 +277,8 @@ async def handle_callback_query(callback_query: types.CallbackQuery) -> None:
     else:
         response = "❓ Неизвестное действие"
 
-    await callback_query.message.answer(response)
+    if callback_query.message:
+        await callback_query.message.answer(response)
     await callback_query.answer()
 
 
